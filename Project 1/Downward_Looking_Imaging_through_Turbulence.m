@@ -173,9 +173,23 @@ ATMO.BEACON = POINT_SOURCE; % Set this so ATMO knows how to compute the wavefron
 figure(2)
 for t = 0:0.01:5 %5 seconds in hundreths (my PS's might be too small to handle longer than this)
     ATMO.time = t;
+%     F.planewave * ATMO * A;
+%     subplot(2,2,1)
     imagesc(ATMO.grid);
     axis off
     sqar;
     bigtitle(sprintf('ATMO at time t = %0.2f',t),12);
+%     subplot(2,2,2)
+%     [PSF,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
+%     imagesc(thx,thy,PSF);
+%     axis off;
+%     sqar;
+%     bigtitle(sprintf('PSF at t = %0.2f',t),12);
+%     subplot(2,2,3)
+%     CCD = CCD + PSF;
+%     imagesc(CCD);
+%     axis off;
+%     sqar;
+%     bigtitle('CCD Image',12);
     drawnow;
 end
