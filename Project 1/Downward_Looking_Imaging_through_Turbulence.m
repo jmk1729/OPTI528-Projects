@@ -1,5 +1,5 @@
 % Downward Looking Imaging through Turbulence
-% Authors: Alexander Rodack, R. Philip Scott, Justin Knight
+% Authors: Alexander Rodack, R. Phillip Scott, Justin Knight
 % Project 1
 %
 %
@@ -12,8 +12,7 @@ clear all; clc; close all;
 LAMBDA = AOField.VBAND;
 % Initialize a CCD just in case
 CCD = 0;
-% Set the number of pixels across the Segment (the Aperture will pick up a
-% couple more)
+% Set the number of pixels across the Segment (the Aperture will pick up a couple more)
 pixels_across_aper = 254;
 
 %Set the r0 for the Phase Screens
@@ -125,13 +124,15 @@ ATMO.addLayer(PS2);
 ATMO.addLayer(PS3);
 ATMO.addLayer(PS4);
 
-% Set the Wind in m/s
+% Set the Wind Vectors in m/s
 ATMO.layers{1}.Wind = [5 0];
 ATMO.layers{2}.Wind = [1 -1]*3;
 ATMO.layers{3}.Wind = [-1 1]*9;
 ATMO.layers{4}.Wind = [0 -1]*13;
 
+% That thing John talked about
 ATMO.GEOMETRY = true;
+
 % Calculate the "total" r0
 r0 = ATMO.totalFriedScale
 
@@ -165,7 +166,10 @@ CAMERA_LAYER = PS4.altitude + 250; %Put the camera slightly above the layer
 POINT_SOURCE = [0 0 1] * CAMERA_LAYER;
 ATMO.BEACON = POINT_SOURCE; % Set this so ATMO knows how to compute the wavefront.
 
-% Just Look at it......for now
+% Just Look at it......for now....this looks interesting. A lot of what
+% looks like defocus phase.  It we put the camera up higher (say change the
+% one in POINT_SOURCE to 10) it looks more Kolmogorov-like. Maybe something
+% to talk to John about
 figure(2)
 for t = 0:0.01:5 %5 seconds in hundreths (my PS's might be too small to handle longer than this)
     ATMO.time = t;
