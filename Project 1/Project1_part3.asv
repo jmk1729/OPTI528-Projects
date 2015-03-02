@@ -8,6 +8,8 @@ clear all; clc; close all;
 
 
 lambda = AOField.RBAND; % Red light.
+k = (2*pi)/lambda;
+N = 512;
 
 %% Make Our Telescope Pupil
 D = 0.5; %meters
@@ -39,8 +41,8 @@ input 'Press ENTER to Continue...'
 %% Make a multi-layer atmosphere.
 % Make an AOAtmo with 3 layers all of the same strength.
 
-altitude = [10,5000,9950];
-Cn2_HV = [HVModel(0,altitude(1)),HVModel(10,altitude(2)),HVModel(85,altitude(3))];
+altitude = [10,6500,9950];
+Cn2_HV = [HVModel(0,altitude(1)),HVModel(50,altitude(2)),HVModel(85,altitude(3))];
 Cn2_SLC = [SLCModel('day',altitude(1)),SLCModel('day',altitude(2)),SLCModel('day',altitude(3))];
 
 
@@ -64,9 +66,6 @@ CAMERA = [0 0 1] * 10000;
 ATMO.BEACON = CAMERA; % Set this so ATMO knows how to compute the wavefront.
 
 ATMO.make;
-ATMO.show
-
-input 'Continue...'
 
 N1=2; N2=2;
 
@@ -79,18 +78,15 @@ F.FFTSize = 1024; % Used to compute PSFs, etc.
 F.lambda = lambda;
 
 F.planewave*A;
-F.show;
 
 [x,y] = F.coords;
 
-input 'Continue...'
-
 % This adds a reference wave to the field and computes the intensity.
-imagesc(x,y,F.interferometer(1),[0 3]);
-sqar;
-axis xy;
-drawnow;
-input 'Continue...'
+% imagesc(x,y,F.interferometer(1),[0 3]);
+% sqar;
+% axis xy;
+% drawnow;
+% input 'Continue...'
 
 THld = F.lambda/D * 206265; % Lambda/D in arcsecs.
 FOV = 4;
@@ -103,43 +99,44 @@ PSFmax = max(PSF(:));
 fprintf('Use light from a finite-distance beacon.\n')
 
 
-%% This doesn't include the geometry, just the OPD from the layers...
-% ATMO.useGeometry(false);
-% 
-% for t=0:.01:1
-%     ATMO.setObsTime(t);
-%     F.planewave*ATMO*A;
-%     
-%     subplot(N1,N2,1);
-%     ATMO.show;
-%     title(sprintf('wavefront:time=%.3fs',t));
-%     
-%     subplot(N1,N2,2);
-%     F.show;
-%     colorbar off;
-%     title('Field');
-% 
-%     
-%     subplot(N1,N2,3);
-%     [PSF,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
-%     imagesc(thx,thy,log10(PSF/PSFmax),[-4 0]);
-%     daspect([1 1 1]);
-%     axis xy;
-%     colorbar off;
-%     title('PSF');
-%     
-%     subplot(N1,N2,4);
-%     imagesc(x,y,F.interferometer(1),[0 4]); sqar;
-%     axis xy;
-%     title('interferometer');
-%     
-%     
-%     drawnow;
-% end
+% This does include the geometry, and the OPD from the layers...
+ATMO.useGeometry(true);
+
+for t=0:.01:0.02
+    ATMO.setObsTime(t);
+    F.planewave*ATMO*A;
+    
+    subplot(N1,N2,1);
+    ATMO.show;
+    title(sprintf('wavefront:time=%.3fs',t));
+    
+    subplot(N1,N2,2);
+    F.show;
+    colorbar off;
+    title('Field');
+
+    
+    subplot(N1,N2,3);
+    [PSF,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
+    imagesc(thx,thy,log10(PSF/PSFmax),[-4 0]);
+    daspect([1 1 1]);
+    axis xy;
+    colorbar off;
+    title('PSF');
+    
+    subplot(N1,N2,4);
+    imagesc(x,y,F.interferometer(1),[0 4]); sqar;
+    axis xy;
+    title('interferometer');
+    
+    
+    drawnow;
+end
 
 %% Propagate Between Screens
 
-% Make Screens
+%% Make Screens
+figure(2);
 ps1 = AOScreen(2*1024);
 ps1.name = 'Ground Layer';
 ps1.spacing(0.02);
@@ -147,25 +144,124 @@ ps1.setCn2(Cn2_HV(1));
 ps1.make;
 clf;
 ps1.show;
-input 'Continue...
+input 'Continue...'
 
 ps2 = AOScreen(2*1024);
 ps2.name = 'Mid Layer';
 ps2.spacing(0.02);
 ps2.setCn2(Cn2_HV(2));
 ps2.make;
+clf;
+ps2.show;
+input 'Continue...'
 
 ps3 = AOScreen(2*1024);
 ps3.name = 'Camera Layer';
 ps3.spacing(0.02);
 ps3.setCn2(Cn2_HV(3));
 ps3.make;
+clf;
+ps3.show;
+input 'Continue...'
 
 
+%% Make a Spherical Wave
+% Initial Parameters
+d = lambda;
+
+% Spatial
+xsp = linspace(-30*lambda,30*lambda,N+1);
+xsp = xsp(1:N);
+delx = xsp(2)-xsp(1);
+[X,Y] = meshgrid(xsp);
+R = sqrt(X.^2+Y.^2);
+
+% Fourier
+xi = linspace(-(1/(2*delx)),1/(2*delx),N+1);
+xi = xi(1:N);
+[XI,ETA] = meshgrid(xi);
+
+% Creating a "Point" Source
+Point = double(R<0.25*lambda);
+uin = Point;
+
+% Bringing Field into Fourier Domain
+Uin = fftshift(fft2(fftshift(uin))*delx^2);
+% Setting Up Some Propagation
+term2 = sqrt((1/(lambda^2)) - XI.^2 - ETA.^2);
 
 
+% Transfer Function
+U_ph = exp(2*pi*1j*d*term2);
+% Propagating
+Uout = Uin .* U_ph;
+% Bringing Back to Spatial Domain
+uout = ifftshift(ifft2(ifftshift(Uout))*(1/delx)^2);
+imagesc(xsp,xsp,real(uout))
+title(sprintf('Point Source Propagated by\n %0.1f lambda',d/lambda));
+xlabel('x [meters]');
+ylabel('y [meters]');
+colormap(gray)
+xlim([0,30*lambda]);
+sqar;
+drawnow;
 
-
-
-
-
+%% Go through the screens
+for t=0:.01:0.02
+    ps1.shiftPixels([1 1]);
+    ps2.shiftPixels([1 1]*10);
+    ps3.shiftPixels([1 1]*25);
+    
+    F.planewave;
+    % Set the field to be the slightly propagated point source
+    F.grid(padarray(uout,[3*N,3*N]));
+    % F.grid(uout);
+    % F.show
+    % input 'Propagate to ps1...';
+    
+    F.propagate(altitude(1));
+    % F.show;
+    % input 'Go through ps1...';
+    
+    F * ps1;
+    % F.show;
+    % input 'Propagate to ps2...';
+    
+    F.propagate(altitude(2));
+    % F.show;
+    % input 'Go through ps2...';
+    
+    F * ps2;
+    % F.show;
+    % input 'Propagate to ps3...';
+    
+    F.propagate(altitude(3));
+    % F.show;
+    % input 'Go through ps3...';
+    
+    F * ps3;
+    % F.show;
+    % input 'Continue...';
+    
+    F.propagate(10);
+    F * A;
+    
+    
+    subplot(1,2,1);
+    F.show;
+    colorbar off;
+    title('Field');
+    
+    
+    subplot(1,2,2);
+    [PSF,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
+    PSFmax = max(max(PSF));
+    imagesc(thx,thy,log10(PSF/PSFmax),[-2 0]);
+    daspect([1 1 1]);
+    axis xy;
+    colorbar off;
+    title('PSF');
+    title(sprintf('wavefront:time=%.3fs',t));
+    colormap(gray);
+    drawnow;
+end
