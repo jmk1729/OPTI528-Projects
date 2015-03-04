@@ -22,7 +22,7 @@ PLATE_SCALE = THld/2; % Pixel Size for PSF computations
 CCD = 0;
 
 % Choose to Step Through Propagation
-plotsteps = false;
+plotsteps = true;
 
 N1=2; N2=2;
 
@@ -128,7 +128,6 @@ end
 
 %% Propagate Between Screens
 fprintf('**************************************************************\n\n');
-input 'Press a key to Continue'
 fprintf('Preparing Propatation Section......\n');
 
 %% Make a Spherical Wave
@@ -192,17 +191,9 @@ if plotsteps == true
 end
 
 %% Go through the screens
-if plotsteps == false
-    fprintf('t = \n');
-end
-
+fprintf('t = \n');
 for t=0:.01:0.5
-    if plotsteps == false
-        fprintf('%0.3f \t',t);
-    elseif plotsteps == true
-        fprintf('t = %0.3f',t);
-    end
-    
+    fprintf('%0.3f \t',t);
     if mod(counter,7) == 0
         fprintf('\n');
     end
@@ -280,7 +271,7 @@ for t=0:.01:0.5
     subplot(2,2,2);
     [PSF_final,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
     PSFmax_final = max(max(PSF_final));
-    imagesc(thx,thy,log10(PSF_final/PSFmax),[-8,0]);
+    imagesc(thx,thy,log10(PSF_final/PSFmax));
     daspect([1 1 1]);
     axis xy;
     colorbar off;
