@@ -13,13 +13,13 @@ N = 512;
 
 %% Make Our Telescope Pupil
 D = 0.5; %meters
-% secondary = 0.3 * D;
-secondary = 0;
+secondary = 0.3 * D;
+% secondary = 0;
 
 SPACING = 0.001;           % 1 mm spacing (could probably be less)
 aa = SPACING;              % for antialiasing.
-% spider = 0.0254;
-spider = 0;
+spider = 0.0254;
+% spider = 0;
 
 PUPIL_DEFN = [
    0 0 D         1 aa 0 0 0 0 0
@@ -32,7 +32,6 @@ A.spacing(SPACING);
 A.name = 'PAJ Pupil';
 A.pupils = PUPIL_DEFN;
 A.make;
-
 clf;
 colormap(gray);
 
@@ -42,11 +41,9 @@ input 'Press ENTER to Continue...'
 
 %% Make a multi-layer atmosphere.
 % Make an AOAtmo with 3 layers all of the same strength.
-
-altitude = [10,6500,9950];
+altitude = [10,6800,9980];
 Cn2_HV = [HVModel(0,altitude(1)),HVModel(50,altitude(2)),HVModel(85,altitude(3))];
 Cn2_SLC = [SLCModel('day',altitude(1)),SLCModel('day',altitude(2)),SLCModel('day',altitude(3))];
-
 
 ATMO = AOAtmo(A);
 ATMO.name = 'Layered Atmosphere';
@@ -60,7 +57,6 @@ for n=1:3
     ATMO.layers{n}.Wind = randn([1 2])*15; % random wind layers.
 end    
 
-
 % Define some beacons from which to calculate ATMO OPLs...
 %% Guide star selection
 CAMERA = [0 0 1] * 10000;
@@ -71,8 +67,10 @@ ATMO.make;
 
 N1=2; N2=2;
 
-%% Make an AOField object.
 
+
+
+%% Make an AOField object.
 F = AOField(A);
 F.name = 'Field';
 F.resize(1024); % make it big to study the field before the pupil.
@@ -91,7 +89,7 @@ F.planewave*A;
 % input 'Continue...'
 
 THld = F.lambda/D * 206265; % Lambda/D in arcsecs.
-FOV = 4;
+FOV = 4*THld;
 PLATE_SCALE = THld/5;
 
 F.planewave*A;
@@ -100,11 +98,9 @@ PSFmax = max(PSF(:));
 
 fprintf('Use light from a finite-distance beacon.\n')
 
-
-% This does include the geometry, and the OPD from the layers...
 ATMO.useGeometry(true);
 
-for t=0:.01:0.02
+for t=0:.01:0.01
     ATMO.setObsTime(t);
     F.planewave*ATMO*A;
     
@@ -137,12 +133,24 @@ end
 
 %% Propagate Between Screens
 
+%% Make a Spherical Wave
+x = linspace(-0.01,0.01,256);
+[X,Y] = meshgrid(x);
+Z = altitude(1);
+R = sqrt(X.^2 + Y.^2 + Z^2);
+spherical_wave = exp((1i*k*R))./R;
+
+R_mask = sqrt(X.^2 + Y.^2);
+mask = double(R_mask <= 0.0035);
+spherical_wave = spherical_wave .* mask;
+
 %% Make Screens
 figure(2);
 ps1 = AOScreen(2*1024);
 ps1.name = 'Ground Layer';
 ps1.spacing(0.02);
-ps1.setCn2(Cn2_HV(1));
+% ps1.setCn2(Cn2_HV(1));
+ps1.setR0(0.15);
 ps1.make;
 clf;
 ps1.show;
@@ -151,7 +159,8 @@ input 'Continue...'
 ps2 = AOScreen(2*1024);
 ps2.name = 'Mid Layer';
 ps2.spacing(0.02);
-ps2.setCn2(Cn2_HV(2));
+% ps2.setCn2(Cn2_HV(2));
+ps2.setR0(0.3);
 ps2.make;
 clf;
 ps2.show;
@@ -160,94 +169,70 @@ input 'Continue...'
 ps3 = AOScreen(2*1024);
 ps3.name = 'Camera Layer';
 ps3.spacing(0.02);
-ps3.setCn2(Cn2_HV(3));
+% ps3.setCn2(Cn2_HV(3));
+ps3.setR0(0.5);
 ps3.make;
 clf;
 ps3.show;
 input 'Continue...'
 
-
-%% Make a Spherical Wave
-% Initial Parameters
-d = lambda;
-
-% Spatial
-xsp = linspace(-30*lambda,30*lambda,N+1);
-xsp = xsp(1:N);
-delx = xsp(2)-xsp(1);
-[X,Y] = meshgrid(xsp);
-R = sqrt(X.^2+Y.^2);
-
-% Fourier
-xi = linspace(-(1/(2*delx)),1/(2*delx),N+1);
-xi = xi(1:N);
-[XI,ETA] = meshgrid(xi);
-
-% Creating a "Point" Source
-Point = double(R<0.25*lambda);
-uin = Point;
-
-% Bringing Field into Fourier Domain
-Uin = fftshift(fft2(fftshift(uin))*delx^2);
-% Setting Up Some Propagation
-term2 = sqrt((1/(lambda^2)) - XI.^2 - ETA.^2);
-
-
-% Transfer Function
-U_ph = exp(2*pi*1j*d*term2);
-% Propagating
-Uout = Uin .* U_ph;
-% Bringing Back to Spatial Domain
-uout = ifftshift(ifft2(ifftshift(Uout))*(1/delx)^2);
-imagesc(xsp,xsp,real(uout))
-title(sprintf('Point Source Propagated by\n %0.1f lambda',d/lambda));
-xlabel('x [meters]');
-ylabel('y [meters]');
-colormap(gray)
-xlim([-30*lambda,30*lambda]);
-sqar;
-drawnow;
-
+clf;
+plotCAmpl(spherical_wave,1.0);
+CCD = 0;
+plotsteps = false;
 %% Go through the screens
-for t=0:.01:0.01
+for t=0:.01:0.5
     ps1.shiftPixels([1 1]);
     ps2.shiftPixels([1 1]*10);
     ps3.shiftPixels([1 1]*25);
     
     F.planewave;
-    % Set the field to be the slightly propagated point source
-    F.grid(padarray(uout,[3*N,3*N]));
-    % F.grid(uout);
-    % F.show
-    % input 'Propagate to ps1...';
+    % Set the field to be a spherical wave
+    F.grid(padarray(spherical_wave,[2.5*length(spherical_wave),2.5*length(spherical_wave)]));
+    if plotsteps == true;
+        F.show
+        input 'Propagate to ps1...';
+    end
     
     F.propagate(altitude(1));
-    % F.show;
-    % input 'Go through ps1...';
+    if plotsteps == true;
+        F.show;
+        input 'Go through ps1...';
+    end
     
     F * ps1;
-    % F.show;
-    % input 'Propagate to ps2...';
+    if plotsteps == true;
+        F.show;
+        input 'Propagate to ps2...';
+    end
     PSF1 = F.mkPSF(FOV,PLATE_SCALE);
     F.touch;
     
     F.propagate(altitude(2));
-    % F.show;
-    % input 'Go through ps2...';
+    if plotsteps == true;
+        F.show;
+        input 'Go through ps2...';
+    end
     
     F * ps2;
-    % F.show;
-    % input 'Propagate to ps3...';
+    if plotsteps == true;
+        F.show;
+        input 'Propagate to ps3...';
+    end
     PSF2 = F.mkPSF(FOV,PLATE_SCALE);
     F.touch;
     
     F.propagate(altitude(3));
-    % F.show;
-    % input 'Go through ps3...';
+    if plotsteps == true;
+        F.show;
+        input 'Go through ps3...';
+    end
     
     F * ps3;
-    % F.show;
-    % input 'Continue...';
+    if plotsteps == true;
+        F.show;
+        input 'Continue...';
+    end
     PSF3 = F.mkPSF(FOV,PLATE_SCALE);
     F.touch;
     
@@ -255,26 +240,37 @@ for t=0:.01:0.01
     F * A;
     
     
-    subplot(1,2,1);
+    subplot(2,2,1);
     F.show;
     colorbar off;
     title('Field');
     
     
-    subplot(1,2,2);
+    subplot(2,2,2);
     [PSF_final,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
     PSFmax_final = max(max(PSF_final));
-    imagesc(thx,thy,log10(PSF_final/PSFmax),[-2 0]);
+    imagesc(thx,thy,log10(PSF_final/PSFmax));
     daspect([1 1 1]);
     axis xy;
     colorbar off;
     title(sprintf('PSF:time=%.3fs',t));
     colormap(gray);
+    
+    subplot(2,2,3)
+    CCD = CCD + PSF_final;
+    imagesc(thx,thy,CCD);
+    title('Long Exposure');
+    colormap(gray);
+    
+    if plotsteps == true;
+        subplot(2,2,4);
+    end
     drawnow;
 end
 
 
-figure(3);
+
 test1 = conv2(PSF1,PSF2);
 test2 = conv2(test1,PSF3);
-imagesc(thx,thy,test2);
+% figure(3);
+% imagesc(thx,thy,test2);
