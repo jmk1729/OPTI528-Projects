@@ -128,6 +128,7 @@ end
 
 %% Propagate Between Screens
 fprintf('**************************************************************\n\n');
+input 'Press a key to Continue'
 fprintf('Preparing Propatation Section......\n');
 
 %% Make a Spherical Wave
@@ -191,9 +192,17 @@ if plotsteps == true
 end
 
 %% Go through the screens
-fprintf('t = \n');
+if plotsteps == false
+    fprintf('t = \n');
+end
+
 for t=0:.01:0.5
-    fprintf('%0.3f \t',t);
+    if plotsteps == false
+        fprintf('%0.3f \t',t);
+    elseif plotsteps == true
+        fprintf('t = %0.3f',t);
+    end
+    
     if mod(counter,7) == 0
         fprintf('\n');
     end
@@ -271,7 +280,7 @@ for t=0:.01:0.5
     subplot(2,2,2);
     [PSF_final,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
     PSFmax_final = max(max(PSF_final));
-    imagesc(thx,thy,log10(PSF_final/PSFmax));
+    imagesc(thx,thy,log10(PSF_final/PSFmax),[-8,0]);
     daspect([1 1 1]);
     axis xy;
     colorbar off;
