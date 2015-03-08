@@ -271,6 +271,8 @@ for t=0:.01:0.5
         F.show;
         title('Complex Field through ps3');
         input 'Continue...';
+    else
+        final_field = F.grid;
     end
     PSF3 = F.mkPSF(FOV,PLATE_SCALE);
     F.touch;
@@ -303,18 +305,25 @@ for t=0:.01:0.5
     
     if plotsteps == true;
         subplot(2,2,4);
+    else
+        subplot(2,2,4);
+        plotCAmpl(final_field);
+        sqar;
+        title('Field after ps3');
+        axis off
+        axis xy;
     end
     drawnow;
-    if counter == 3
+    if counter == 2
         plotsteps = false;
     end
-    
+
     counter = counter + 1;
 end
 
 
 
-test1 = conv2(PSF1,PSF2);
-test2 = conv2(test1,PSF3);
+% test1 = conv2(PSF1,PSF2);
+% test2 = conv2(test1,PSF3);
 % figure(3);
 % imagesc(thx,thy,test2);
