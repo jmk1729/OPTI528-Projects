@@ -133,15 +133,22 @@ fprintf('Preparing Propatation Section......\n');
 
 %% Make a Spherical Wave
 fprintf('Making a Spherical Wave\n');
-x = linspace(-0.01,0.01,256);
-[X,Y] = meshgrid(x);
-Z = altitude(1);
-R = sqrt(X.^2 + Y.^2 + Z^2);
-spherical_wave = exp((1i*k*R))./R;
+% x = linspace(-0.01,0.01,256);
+% [X,Y] = meshgrid(x);
+% Z = altitude(1);
+% R = sqrt(X.^2 + Y.^2 + Z^2);
+% spherical_wave = exp((1i*k*R))./R;
+% 
+% R_mask = sqrt(X.^2 + Y.^2);
+% mask = double(R_mask <= 0.0035);
+% spherical_wave = spherical_wave .* mask;
 
-R_mask = sqrt(X.^2 + Y.^2);
-mask = double(R_mask <= 0.0035);
-spherical_wave = spherical_wave .* mask;
+N = 256;
+A0 = 1;
+w = 0.0085;
+verbose = true;
+spherical_wave = sphericalwave(N,A0,lambda,w,verbose);
+
 
 %% Make Screens
 fprintf('\nBuilding Phase Screens\n');
@@ -184,7 +191,7 @@ pause(2);
 
 plotCAmpl(spherical_wave,1.0);
 CCD = 0;
-counter = 1;
+
 
 fprintf('\nPropagating Spherical Wave through Phase Screens to Camera\n');
 if plotsteps == true
@@ -195,7 +202,8 @@ end
 if plotsteps == false
     fprintf('t = \n');
 end
-
+counter = 1;
+spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
 for t=0:.01:0.5
     if plotsteps == false
         fprintf('%0.3f \t',t);
@@ -212,7 +220,7 @@ for t=0:.01:0.5
     
     F.planewave;
     % Set the field to be a spherical wave
-    F.grid(padarray(spherical_wave,[2.5*length(spherical_wave),2.5*length(spherical_wave)]));
+    F.grid(spherical_wave);
     if plotsteps == true;
         F.show
         title('Spherical Wave');
@@ -280,7 +288,7 @@ for t=0:.01:0.5
     subplot(2,2,2);
     [PSF_final,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
     PSFmax_final = max(max(PSF_final));
-    imagesc(thx,thy,log10(PSF_final/PSFmax),[-8,0]);
+    imagesc(thx,thy,log10(PSF_final/PSFmax));
     daspect([1 1 1]);
     axis xy;
     colorbar off;
@@ -297,6 +305,10 @@ for t=0:.01:0.5
         subplot(2,2,4);
     end
     drawnow;
+    if counter == 3
+        plotsteps = false;
+    end
+    
     counter = counter + 1;
 end
 
