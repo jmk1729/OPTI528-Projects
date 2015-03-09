@@ -19,7 +19,7 @@ spider = 0.0254/2;
 THld = lambda/D * 206265; % Lambda/D in arcsecs.
 FOV =   25*THld; % FOV for PSF computation
 PLATE_SCALE = THld/5; % Pixel Size for PSF computations -- set by our first order parameter
-CCD = 0;
+CCD1 = 0;
 
 % Choose to Step Through Propagation
 plotsteps = true;
@@ -53,7 +53,7 @@ fprintf('\n');
 altitude = [10,5000,9980];
 thickness = [altitude(1),altitude(2)-altitude(1),altitude(3)-altitude(2)];
 % r0_mat = [0.15,0.3,0.5];
-Cn2_HV = [altitude(1)*HVModel(0,thickness(1)),(altitude(2)-altitude(1))*HVModel(50,thickness(2)),(altitude(3)-altitude(2))*HVModel(85,thickness(3))];
+Cn2_HV = [thickness(1)*HVModel(0,thickness(1)/2),(thickness(2))*HVModel(50,altitude(2)-thickness(2)/2),(thickness(3))*HVModel(85,altitude(3)-thickness(3)/2)];
 % Cn2_SLC = [SLCModel('day',altitude(1)),SLCModel('day',altitude(2)),SLCModel('day',altitude(3))];
 
 ATMO = AOAtmo(A);
@@ -119,9 +119,11 @@ for t=0:.01:0.01
     title('PSF');
     
     subplot(N1,N2,4);
-    imagesc(x,y,F.interferometer(1),[0 4]); sqar;
-    axis xy;
-    title('interferometer');
+    CCD1 = CCD1 + PSF;
+    imagesc(thx,thy,CCD1);
+    title('Long Exposure');
+    axis xy
+    colormap(gray);
     
     
     drawnow;
@@ -191,7 +193,7 @@ drawnow;
 pause(2);
 
 plotCAmpl(spherical_wave,1.0);
-CCD = 0;
+CCD2 = 0;
 
 
 fprintf('\nPropagating Spherical Wave through Phase Screens to Camera\n');
@@ -284,7 +286,7 @@ for t=0:.01:0.5
     
     subplot(2,2,1);
     F.show;
-    colorbar off;;
+    colorbar off;
     title('Field at Telescope Aperture');
     
     
@@ -299,8 +301,8 @@ for t=0:.01:0.5
     colormap(gray);
     
     subplot(2,2,3)
-    CCD = CCD + PSF_final;
-    imagesc(thx,thy,CCD);
+    CCD2 = CCD2 + PSF_final;
+    imagesc(thx,thy,CCD2);
     title('Long Exposure');
     axis xy
     colormap(gray);
