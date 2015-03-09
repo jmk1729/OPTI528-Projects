@@ -94,15 +94,17 @@ PSFmax = max(PSF_DL(:));
 
 input 'Press a key to Continue'
 
+h = figure(1);
 ATMO.useGeometry(true);
-
-for t=0:.01:0.5
+counter = 1;
+for t=0:.01:0.05
     ATMO.setObsTime(t);
     F.planewave*ATMO*A;
     
     subplot(N1,N2,1);
     ATMO.show;
     title(sprintf('wavefront:time=%.3fs',t));
+    colorbar off;
     
     subplot(N1,N2,2);
     F.show;
@@ -127,6 +129,8 @@ for t=0:.01:0.5
     
     
     drawnow;
+%     M1(counter) =getframe(h);
+    counter = counter + 1;
 end
 
 %% Propagate Between Screens
@@ -206,6 +210,7 @@ if plotsteps == false
     fprintf('t = \n');
 end
 counter = 1;
+h2 = figure(2);
 spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
 for t=0:.01:0.5
     if plotsteps == false
@@ -318,16 +323,23 @@ for t=0:.01:0.5
         axis xy;
     end
     drawnow;
-    if counter == 2
+    
+    if counter == 1
         plotsteps = false;
     end
-
+%     M2(counter) = getframe(h2);
     counter = counter + 1;
 end
 
-
 %% Check Performance
 input 'Press Enter to Continue'
+
+
+CCD1max = max(CCD1(:));
+CCD2max = max(CCD2(:));
+
+CCD1 = CCD1 / CCD1max;
+CCD2 = CCD2 / CCD2max;
 
 % Load in Image of Steward Observatory from Google Earth
 img = imread('full_size_SO_pic.PNG');
@@ -336,6 +348,9 @@ img = double(img(:,:,1));
 figure(4);
 imagesc(img);
 colormap(gray);
+axis off;
+title('Un-blurred Image of Steward Observatory');
+drawnow;
 
 % Diffraction Limited Case
 fprintf('Computing blurred image with diffraction limited PSF\n');
