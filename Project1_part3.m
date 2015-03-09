@@ -326,8 +326,75 @@ for t=0:.01:0.5
 end
 
 
+%% Check Performance
+input 'Press Enter to Continue'
 
-% test1 = conv2(PSF1,PSF2);
-% test2 = conv2(test1,PSF3);
-% figure(3);
-% imagesc(thx,thy,test2);
+% Load in Image of Steward Observatory from Google Earth
+img = imread('full_size_SO_pic.PNG');
+img = double(img(:,:,1));
+
+figure(4);
+imagesc(img);
+colormap(gray);
+
+% Diffraction Limited Case
+fprintf('Computing blurred image with diffraction limited PSF\n');
+img_DL = conv2(img,PSF_DL);
+
+% Atmo Model Case
+fprintf('Computing blurred image with CCD PSF from Atmo Case\n');
+img_atmo_CCD = conv2(img,CCD1);
+fprintf('Computing blurred image with single realization of Atmo Case PSF\n');
+img_atmo_inst = conv2(img,PSF);
+
+% Propagation Case
+fprintf('Computing blurred image with CCD PSF from Propagation Case\n');
+img_prop_CCD = conv2(img,CCD2);
+fprintf('Computing blurred image with single realization of Propagation Case PSF\n');
+img_prop_inst = conv2(img,PSF_final);
+
+figure(4)
+clf;
+subplot(1,2,1)
+imagesc(img);
+colormap(gray);
+sqar;
+title('Un-blurred Image');
+axis off
+
+subplot(1,2,2)
+imagesc(img_DL);
+sqar;
+title('Diffraction Limited Case');
+axis off
+drawnow;
+
+figure(5)
+subplot(1,2,1)
+imagesc(img_atmo_CCD);
+sqar;
+title('Atmo CCD Case');
+axis off
+colormap(gray)
+
+subplot(1,2,2)
+imagesc(img_atmo_inst);
+sqar;
+title('Atmo Single PSF Case');
+axis off
+drawnow;
+
+figure(6);
+subplot(1,2,1)
+imagesc(img_prop_CCD)
+colormap(gray);
+sqar;
+title('Propagation CCD Case');
+axis off;
+
+subplot(1,2,2);
+imagesc(img_prop_inst);
+sqar;
+title('Propagation Single PSF Case');
+axis off;
+drawnow;
