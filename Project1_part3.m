@@ -50,7 +50,7 @@ fprintf('\n');
 
 %% Make a multi-layer atmosphere.
 % Make an AOAtmo with 3 layers all of the same strength.
-altitude = [10,5000,9980];
+altitude = [10,5000,9990];
 thickness = [altitude(1),altitude(2)-altitude(1),altitude(3)-altitude(2)];
 % r0_mat = [0.15,0.3,0.5];
 Cn2_HV = [thickness(1)*HVModel(0,thickness(1)/2),(thickness(2))*HVModel(50,altitude(2)-thickness(2)/2),(thickness(3))*HVModel(85,altitude(3)-thickness(3)/2)];
@@ -96,7 +96,7 @@ input 'Press a key to Continue'
 
 ATMO.useGeometry(true);
 
-for t=0:.01:0.01
+for t=0:.01:0.5
     ATMO.setObsTime(t);
     F.planewave*ATMO*A;
     
