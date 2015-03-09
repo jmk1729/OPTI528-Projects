@@ -22,7 +22,7 @@ PLATE_SCALE = THld/5; % Pixel Size for PSF computations -- set by our first orde
 CCD1 = 0;
 
 % Choose to Step Through Propagation
-plotsteps = false;
+plotsteps = true;
 
 N1=2; N2=2;
 
@@ -97,13 +97,14 @@ input 'Press a key to Continue'
 h = figure(1);
 ATMO.useGeometry(true);
 counter = 1;
-for t=0:.01:0.5
+for t=0:.01:0.05
     ATMO.setObsTime(t);
     F.planewave*ATMO*A;
     
     subplot(N1,N2,1);
     ATMO.show;
     title(sprintf('wavefront:time=%.3fs',t));
+    colorbar off;
     
     subplot(N1,N2,2);
     F.show;
@@ -128,13 +129,13 @@ for t=0:.01:0.5
     
     
     drawnow;
-    M1(counter) =getframe(h);
+%     M1(counter) =getframe(h);
     counter = counter + 1;
 end
 
 %% Propagate Between Screens
 fprintf('**************************************************************\n\n');
-% input 'Press a key to Continue'
+input 'Press a key to Continue'
 fprintf('Preparing Propatation Section......\n');
 
 %% Make a Spherical Wave
@@ -322,15 +323,16 @@ for t=0:.01:0.5
         axis xy;
     end
     drawnow;
-    if counter == 2
+    
+    if counter == 1
         plotsteps = false;
     end
-    M2(counter) = getframe(h2);
+%     M2(counter) = getframe(h2);
     counter = counter + 1;
 end
 
 %% Check Performance
-% input 'Press Enter to Continue'
+input 'Press Enter to Continue'
 
 
 CCD1max = max(CCD1(:));
