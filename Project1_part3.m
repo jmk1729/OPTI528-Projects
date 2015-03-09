@@ -22,7 +22,7 @@ PLATE_SCALE = THld/5; % Pixel Size for PSF computations -- set by our first orde
 CCD1 = 0;
 
 % Choose to Step Through Propagation
-plotsteps = true;
+plotsteps = false;
 
 N1=2; N2=2;
 
@@ -94,8 +94,9 @@ PSFmax = max(PSF_DL(:));
 
 input 'Press a key to Continue'
 
+h = figure(1);
 ATMO.useGeometry(true);
-
+counter = 1;
 for t=0:.01:0.5
     ATMO.setObsTime(t);
     F.planewave*ATMO*A;
@@ -127,11 +128,13 @@ for t=0:.01:0.5
     
     
     drawnow;
+    M1(counter) =getframe(h);
+    counter = counter + 1;
 end
 
 %% Propagate Between Screens
 fprintf('**************************************************************\n\n');
-input 'Press a key to Continue'
+% input 'Press a key to Continue'
 fprintf('Preparing Propatation Section......\n');
 
 %% Make a Spherical Wave
@@ -206,6 +209,7 @@ if plotsteps == false
     fprintf('t = \n');
 end
 counter = 1;
+h2 = figure(2);
 spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
 for t=0:.01:0.5
     if plotsteps == false
@@ -321,13 +325,19 @@ for t=0:.01:0.5
     if counter == 2
         plotsteps = false;
     end
-
+    M2(counter) = getframe(h2);
     counter = counter + 1;
 end
 
-
 %% Check Performance
-input 'Press Enter to Continue'
+% input 'Press Enter to Continue'
+
+
+CCD1max = max(CCD1(:));
+CCD2max = max(CCD2(:));
+
+CCD1 = CCD1 / CCD1max;
+CCD2 = CCD2 / CCD2max;
 
 % Load in Image of Steward Observatory from Google Earth
 img = imread('full_size_SO_pic.PNG');
@@ -336,6 +346,9 @@ img = double(img(:,:,1));
 figure(4);
 imagesc(img);
 colormap(gray);
+axis off;
+title('Un-blurred Image of Steward Observatory');
+drawnow;
 
 % Diffraction Limited Case
 fprintf('Computing blurred image with diffraction limited PSF\n');
