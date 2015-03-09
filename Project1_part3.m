@@ -13,12 +13,12 @@ k = (2*pi)/lambda;
 % Pupil Choices
 D = 0.5; %meters
 secondary = 0.3 * D;
-spider = 0.0254;
+spider = 0.0254/2;
 
 % PSF Stuff
 THld = lambda/D * 206265; % Lambda/D in arcsecs.
-FOV = 15*THld; % FOV for PSF computation
-PLATE_SCALE = THld/2; % Pixel Size for PSF computations
+FOV =   25*THld; % FOV for PSF computation
+PLATE_SCALE = THld/5; % Pixel Size for PSF computations -- set by our first order parameter
 CCD = 0;
 
 % Choose to Step Through Propagation
@@ -50,9 +50,10 @@ fprintf('\n');
 
 %% Make a multi-layer atmosphere.
 % Make an AOAtmo with 3 layers all of the same strength.
-altitude = [10,6800,9980];
-r0_mat = [0.15,0.3,0.5];
-% Cn2_HV = [HVModel(0,altitude(1)),HVModel(50,altitude(2)),HVModel(85,altitude(3))];
+altitude = [10,5000,9980];
+thickness = [altitude(1),altitude(2)-altitude(1),altitude(3)-altitude(2)];
+% r0_mat = [0.15,0.3,0.5];
+Cn2_HV = [altitude(1)*HVModel(0,thickness(1)),(altitude(2)-altitude(1))*HVModel(50,thickness(2)),(altitude(3)-altitude(2))*HVModel(85,thickness(3))];
 % Cn2_SLC = [SLCModel('day',altitude(1)),SLCModel('day',altitude(2)),SLCModel('day',altitude(3))];
 
 ATMO = AOAtmo(A);
@@ -62,8 +63,8 @@ for n=1:3
     ps = AOScreen(2*1024);
     ps.name = sprintf('Layer %d',n);
     ps.spacing(0.02);
-    % ps.setCn2(Cn2_HV(n));
-    ps.setR0(r0_mat(n));
+    ps.setCn2(Cn2_HV(n),thickness(n));
+%     ps.setR0(r0_mat(n));
     ATMO.addLayer(ps,altitude(n));
     ATMO.layers{n}.Wind = randn([1 2])*15; % random wind layers.
 end
@@ -87,8 +88,8 @@ F.planewave*A;
 [x,y] = F.coords;
 
 F.planewave*A;
-[PSF,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
-PSFmax = max(PSF(:));
+[PSF_DL,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
+PSFmax = max(PSF_DL(:));
 
 
 input 'Press a key to Continue'
@@ -156,8 +157,8 @@ figure(2);
 ps1 = AOScreen(2*1024);
 ps1.name = 'Ground Layer';
 ps1.spacing(0.02);
-% ps1.setCn2(Cn2_HV(1));
-ps1.setR0(0.15);
+ps1.setCn2(Cn2_HV(1));
+% ps1.setR0(0.15);
 ps1.make;
 clf;
 ps1.show;
@@ -168,8 +169,8 @@ pause(2);
 ps2 = AOScreen(2*1024);
 ps2.name = 'Mid Layer';
 ps2.spacing(0.02);
-% ps2.setCn2(Cn2_HV(2));
-ps2.setR0(0.3);
+ps2.setCn2(Cn2_HV(2));
+% ps2.setR0(0.3);
 ps2.make;
 clf;
 ps2.show;
@@ -180,8 +181,8 @@ pause(2);
 ps3 = AOScreen(2*1024);
 ps3.name = 'Camera Layer';
 ps3.spacing(0.02);
-% ps3.setCn2(Cn2_HV(3));
-ps3.setR0(0.5);
+ps3.setCn2(Cn2_HV(3));
+% ps3.setR0(0.5);
 ps3.make;
 clf;
 ps3.show;
@@ -283,14 +284,14 @@ for t=0:.01:0.5
     
     subplot(2,2,1);
     F.show;
-    colorbar off;
+    colorbar off;;
     title('Field at Telescope Aperture');
     
     
     subplot(2,2,2);
     [PSF_final,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
     PSFmax_final = max(max(PSF_final));
-    imagesc(thx,thy,log10(PSF_final/PSFmax));
+    imagesc(thx,thy,log10(PSF_final/PSFmax_final),[-4,0]);
     daspect([1 1 1]);
     axis xy;
     colorbar off;
@@ -301,6 +302,7 @@ for t=0:.01:0.5
     CCD = CCD + PSF_final;
     imagesc(thx,thy,CCD);
     title('Long Exposure');
+    axis xy
     colormap(gray);
     
     if plotsteps == true;
