@@ -7,7 +7,7 @@ clear all; clc; close all;
 
 
 %% Preliminary Important Stuff
-lambda = AOField.RBAND; % Red light.
+lambda = AOField.VBAND; % Red light.
 k = (2*pi)/lambda;
 
 % Pupil Choices
@@ -212,7 +212,7 @@ end
 counter = 1;
 h2 = figure(2);
 spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
-for t=0:.01:0.5
+for t=0:.01:0.15
     if plotsteps == false
         fprintf('%0.3f \t',t);
     elseif plotsteps == true
@@ -342,7 +342,7 @@ CCD1 = CCD1 / CCD1max;
 CCD2 = CCD2 / CCD2max;
 
 % Load in Image of Steward Observatory from Google Earth
-img = imread('full_size_SO_pic.PNG');
+img = imread('youngJLC.jpg');
 img = double(img(:,:,1));
 
 figure(4);
