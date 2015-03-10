@@ -95,7 +95,7 @@ PSFmax = max(PSF_DL(:));
 input 'Press a key to Continue'
 
 h = figure(1);
-ATMO.useGeometry(true);
+ATMO.useGeometry(false);
 counter = 1;
 for t=0:.01:0.05
     ATMO.setObsTime(t);
@@ -154,8 +154,12 @@ N = 256;
 A0 = 1;
 w = 0.0085;
 verbose = true;
-spherical_wave = sphericalwave(N,A0,lambda,w,verbose);
+spherical_wave = sphericalwave(N,A0,lambda,w,verbose,1);
+spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
 
+%% Make a lens
+LENS = AOScreen(A);
+LENS.name = 'Focusing Lens';
 
 %% Make Screens
 fprintf('\nBuilding Phase Screens\n');
@@ -206,13 +210,17 @@ if plotsteps == true
 end
 
 %% Go through the screens
+CCD2 = 0;
 if plotsteps == false
     fprintf('t = \n');
 end
 counter = 1;
 h2 = figure(2);
-spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
 for t=0:.01:0.15
+    
+    DEFOCUS = [1.87];
+    LENS.zero.addZernike(2,0,-lambda*DEFOCUS,D);
+
     if plotsteps == false
         fprintf('%0.3f \t',t);
     elseif plotsteps == true
@@ -278,17 +286,17 @@ for t=0:.01:0.15
     if plotsteps == true;
         F.show;
         title('Complex Field through ps3');
-        input 'Continue...';
-    else
-        final_field = F.grid;
+        input 'Propagate to Camera and focus';
     end
     PSF3 = F.mkPSF(FOV,PLATE_SCALE);
     F.touch;
     
+    
     F.propagate(10);
-    F * A;
+    final_field = F.grid;
     
-    
+    F*LENS*A;
+
     subplot(2,2,1);
     F.show;
     colorbar off;
@@ -342,7 +350,7 @@ CCD1 = CCD1 / CCD1max;
 CCD2 = CCD2 / CCD2max;
 
 % Load in Image of Steward Observatory from Google Earth
-img = imread('youngJLC.jpg');
+img = imread('full_size_SO_pic.PNG');
 img = double(img(:,:,1));
 
 figure(4);
