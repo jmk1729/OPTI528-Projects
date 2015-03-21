@@ -9,11 +9,12 @@ clear all; clc; close all;
 %% Preliminary Important Stuff
 lambda = AOField.VBAND; % Red light.
 k = (2*pi)/lambda;
+endtime = 0.02;
 
 % Pupil Choices
 D = 0.5; %meters
-secondary = 0.3 * D;
-spider = 0.0254/2;
+% secondary = 0.3 * D;
+% spider = 0.0254/2;
 
 % PSF Stuff
 THld = lambda/D * 206265; % Lambda/D in arcsecs.
@@ -21,8 +22,10 @@ FOV =   25*THld; % FOV for PSF computation
 PLATE_SCALE = THld/5; % Pixel Size for PSF computations -- set by our first order parameter
 CCD1 = 0;
 
-% Choose to Step Through Propagation
-plotsteps = true;
+% Set Flags
+plotsteps = false;
+turbulence = false;
+checkperformance = false;
 
 N1=2; N2=2;
 
@@ -31,8 +34,8 @@ SPACING = 0.001;           % 1 mm spacing (could probably be more)
 aa = SPACING;              % for antialiasing.
 PUPIL_DEFN = [
    0 0 D         1 aa 0 0 0 0 0
-   0 0 secondary 0 aa/2 0 0 0 0 0
-   0 0 spider   -2 aa 4 0 D/1.9 0 0
+%    0 0 secondary 0 aa/2 0 0 0 0 0
+%    0 0 spider   -2 aa 4 0 D/1.9 0 0
    ];
 
 A = AOSegment;
@@ -91,16 +94,19 @@ F.planewave*A;
 [PSF_DL,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
 PSFmax = max(PSF_DL(:));
 
-
+%%
 input 'Press a key to Continue'
 
 h = figure(1);
 ATMO.useGeometry(false);
 counter = 1;
-for t=0:.01:0.05
+for t=0:.01:endtime
     ATMO.setObsTime(t);
-    F.planewave*ATMO*A;
-    
+    if turbulence == true
+        F.planewave*ATMO*A;
+    else
+        F.planewave*A;
+    end
     subplot(N1,N2,1);
     ATMO.show;
     title(sprintf('wavefront:time=%.3fs',t));
@@ -152,9 +158,9 @@ fprintf('Making a Spherical Wave\n');
 
 N = 256;
 A0 = 1;
-w = 0.0085;
+w = 0.01;
 verbose = true;
-spherical_wave = sphericalwave(N,A0,lambda,w,verbose,1);
+spherical_wave = sphericalwave(N,A0,lambda,w,verbose);
 spherical_wave = padarray(spherical_wave,[3.5*length(spherical_wave),3.5*length(spherical_wave)]);
 
 %% Make a lens
@@ -211,14 +217,17 @@ end
 
 %% Go through the screens
 CCD2 = 0;
+DEFOCUS = 2.8107;
+maxvalnew = 0;
+exit = 1;
 if plotsteps == false
     fprintf('t = \n');
 end
 counter = 1;
 h2 = figure(2);
-for t=0:.01:0.15
-    
-    DEFOCUS = [1.87];
+for t=0:.01:endtime
+%     while(exit > 0)
+%     DEFOCUS = DEFOCUS + 0.0001
     LENS.zero.addZernike(2,0,-lambda*DEFOCUS,D);
 
     if plotsteps == false
@@ -243,54 +252,59 @@ for t=0:.01:0.15
         input '\nPropagate to ps1...';
     end
     
-    F.propagate(altitude(1));
+    F.propagate(thickness(1));
     if plotsteps == true;
         F.show;
         title('Complex Field at ps1');
         input 'Go through ps1...';
     end
     
-    F * ps1;
-    if plotsteps == true;
-        F.show;
-        title('Complex Field through ps1');
-        input 'Propagate to ps2...';
+    if turbulence == true
+        F * ps1;
+        if plotsteps == true;
+            F.show;
+            title('Complex Field through ps1');
+            input 'Propagate to ps2...';
+        end
+        PSF1 = F.mkPSF(FOV,PLATE_SCALE);
+        F.touch;
     end
-    PSF1 = F.mkPSF(FOV,PLATE_SCALE);
-    F.touch;
     
-    F.propagate(altitude(2));
+    F.propagate(thickness(2));
     if plotsteps == true;
         F.show;
         title('Complex Field at ps2');
         input 'Go through ps2...';
     end
     
-    F * ps2;
-    if plotsteps == true;
-        F.show;
-        title('Complex Field through ps2');
-        input 'Propagate to ps3...';
+    if turbulence == true
+        F * ps2;
+        if plotsteps == true;
+            F.show;
+            title('Complex Field through ps2');
+            input 'Propagate to ps3...';
+        end
+        PSF2 = F.mkPSF(FOV,PLATE_SCALE);
+        F.touch;
     end
-    PSF2 = F.mkPSF(FOV,PLATE_SCALE);
-    F.touch;
     
-    F.propagate(altitude(3));
+    F.propagate(thickness(3));
     if plotsteps == true;
         F.show;
         title('Complex Field at ps3');
         input 'Go through ps3...';
     end
     
-    F * ps3;
-    if plotsteps == true;
-        F.show;
-        title('Complex Field through ps3');
-        input 'Propagate to Camera and focus';
+    if turbulence == true
+        F * ps3;
+        if plotsteps == true;
+            F.show;
+            title('Complex Field through ps3');
+            input 'Propagate to Camera and focus';
+        end
+        PSF3 = F.mkPSF(FOV,PLATE_SCALE);
+        F.touch;
     end
-    PSF3 = F.mkPSF(FOV,PLATE_SCALE);
-    F.touch;
-    
     
     F.propagate(10);
     final_field = F.grid;
@@ -332,6 +346,10 @@ for t=0:.01:0.15
     end
     drawnow;
     
+%     maxvalprev = maxvalnew;
+%     maxvalnew = PSFmax_final
+%     exit = maxvalnew - maxvalprev;
+%     end
     if counter == 1
         plotsteps = false;
     end
@@ -339,85 +357,89 @@ for t=0:.01:0.15
     counter = counter + 1;
 end
 
+
 %% Check Performance
-input 'Press Enter to Continue'
+if checkperformance == true
 
-
-CCD1max = max(CCD1(:));
-CCD2max = max(CCD2(:));
-
-CCD1 = CCD1 / CCD1max;
-CCD2 = CCD2 / CCD2max;
-
-% Load in Image of Steward Observatory from Google Earth
-img = imread('full_size_SO_pic.PNG');
-img = double(img(:,:,1));
-
-figure(4);
-imagesc(img);
-colormap(gray);
-axis off;
-title('Un-blurred Image of Steward Observatory');
-drawnow;
-
-% Diffraction Limited Case
-fprintf('Computing blurred image with diffraction limited PSF\n');
-img_DL = conv2(img,PSF_DL);
-
-% Atmo Model Case
-fprintf('Computing blurred image with CCD PSF from Atmo Case\n');
-img_atmo_CCD = conv2(img,CCD1);
-fprintf('Computing blurred image with single realization of Atmo Case PSF\n');
-img_atmo_inst = conv2(img,PSF);
-
-% Propagation Case
-fprintf('Computing blurred image with CCD PSF from Propagation Case\n');
-img_prop_CCD = conv2(img,CCD2);
-fprintf('Computing blurred image with single realization of Propagation Case PSF\n');
-img_prop_inst = conv2(img,PSF_final);
-
-figure(4)
-clf;
-subplot(1,2,1)
-imagesc(img);
-colormap(gray);
-sqar;
-title('Un-blurred Image');
-axis off
-
-subplot(1,2,2)
-imagesc(img_DL);
-sqar;
-title('Diffraction Limited Case');
-axis off
-drawnow;
-
-figure(5)
-subplot(1,2,1)
-imagesc(img_atmo_CCD);
-sqar;
-title('Atmo CCD Case');
-axis off
-colormap(gray)
-
-subplot(1,2,2)
-imagesc(img_atmo_inst);
-sqar;
-title('Atmo Single PSF Case');
-axis off
-drawnow;
-
-figure(6);
-subplot(1,2,1)
-imagesc(img_prop_CCD)
-colormap(gray);
-sqar;
-title('Propagation CCD Case');
-axis off;
-
-subplot(1,2,2);
-imagesc(img_prop_inst);
-sqar;
-title('Propagation Single PSF Case');
-axis off;
-drawnow;
+    input 'Press Enter to Continue'
+    
+    
+    CCD1max = max(CCD1(:));
+    CCD2max = max(CCD2(:));
+    
+    CCD1 = CCD1 / CCD1max;
+    CCD2 = CCD2 / CCD2max;
+    
+    % Load in Image of Steward Observatory from Google Earth
+    img = imread('full_size_SO_pic.PNG');
+    img = double(img(:,:,1));
+    
+    figure(4);
+    imagesc(img);
+    colormap(gray);
+    axis off;
+    title('Un-blurred Image of Steward Observatory');
+    drawnow;
+    
+    % Diffraction Limited Case
+    fprintf('Computing blurred image with diffraction limited PSF\n');
+    img_DL = conv2(img,PSF_DL);
+    
+    % Atmo Model Case
+    fprintf('Computing blurred image with CCD PSF from Atmo Case\n');
+    img_atmo_CCD = conv2(img,CCD1);
+    fprintf('Computing blurred image with single realization of Atmo Case PSF\n');
+    img_atmo_inst = conv2(img,PSF);
+    
+    % Propagation Case
+    fprintf('Computing blurred image with CCD PSF from Propagation Case\n');
+    img_prop_CCD = conv2(img,CCD2);
+    fprintf('Computing blurred image with single realization of Propagation Case PSF\n');
+    img_prop_inst = conv2(img,PSF_final);
+    
+    figure(4)
+    clf;
+    subplot(1,2,1)
+    imagesc(img);
+    colormap(gray);
+    sqar;
+    title('Un-blurred Image');
+    axis off
+    
+    subplot(1,2,2)
+    imagesc(img_DL);
+    sqar;
+    title('Diffraction Limited Case');
+    axis off
+    drawnow;
+    
+    figure(5)
+    subplot(1,2,1)
+    imagesc(img_atmo_CCD);
+    sqar;
+    title('Atmo CCD Case');
+    axis off
+    colormap(gray)
+    
+    subplot(1,2,2)
+    imagesc(img_atmo_inst);
+    sqar;
+    title('Atmo Single PSF Case');
+    axis off
+    drawnow;
+    
+    figure(6);
+    subplot(1,2,1)
+    imagesc(img_prop_CCD)
+    colormap(gray);
+    sqar;
+    title('Propagation CCD Case');
+    axis off;
+    
+    subplot(1,2,2);
+    imagesc(img_prop_inst);
+    sqar;
+    title('Propagation Single PSF Case');
+    axis off;
+    drawnow;
+end
