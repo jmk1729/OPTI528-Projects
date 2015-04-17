@@ -6,6 +6,10 @@ function Cn2 = HVModel(rms_wind_speed, altitude)
 % Refractive Index Structure Constant for a given rms wind speed and
 % altitude.  For equation to calculate rms wind speed, see reference 1)
 % *************************************************************************
+% Inputs:
+% rms_wind_speed in m/s, can be vector
+% altitude in meters, can be vector
+% *************************************************************************
 % References:
 % 1) Larry C. Andrews, Field Guide to Atmospheric Optics
 % 2) J. K. Lawson, C. J. Carrano ,Using Historic Models of Cn2 to predict r0
