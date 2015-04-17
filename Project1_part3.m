@@ -9,12 +9,12 @@ clear all; clc; close all;
 %% Preliminary Important Stuff
 lambda = AOField.VBAND; % Red light.
 k = (2*pi)/lambda;
-endtime = 0.02;
+endtime = 0.5;
 
 % Pupil Choices
-D = 0.5; %meters
-% secondary = 0.3 * D;
-% spider = 0.0254/2;
+D = 0.5592; %meters
+secondary = 0.3 * D;
+spider = 0.0254/2;
 
 % PSF Stuff
 THld = lambda/D * 206265; % Lambda/D in arcsecs.
@@ -23,9 +23,9 @@ PLATE_SCALE = THld/5; % Pixel Size for PSF computations -- set by our first orde
 CCD1 = 0;
 
 % Set Flags
-plotsteps = false;
-turbulence = false;
-checkperformance = false;
+plotsteps = false; %use to see plotting the propagation one layer at a time
+turbulence = true; %use to set whether or not turbulence is included
+checkperformance = true; %does the convolution with the PSFs to estimate image quality
 
 N1=2; N2=2;
 
@@ -34,8 +34,8 @@ SPACING = 0.001;           % 1 mm spacing (could probably be more)
 aa = SPACING;              % for antialiasing.
 PUPIL_DEFN = [
    0 0 D         1 aa 0 0 0 0 0
-%    0 0 secondary 0 aa/2 0 0 0 0 0
-%    0 0 spider   -2 aa 4 0 D/1.9 0 0
+   0 0 secondary 0 aa/2 0 0 0 0 0
+   0 0 spider   -2 aa 4 0 D/1.9 0 0
    ];
 
 A = AOSegment;
