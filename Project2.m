@@ -16,12 +16,6 @@ D = 0.5592; %meters
 secondary = 0.3 * D;
 spider = 0.0254/2;
 
-% PSF Stuff
-THld = lambda/D * 206265; % Lambda/D in arcsecs.
-FOV =   100*THld; % FOV for PSF computation
-PLATE_SCALE = THld/2; % Pixel Size for PSF computations -- set by our first order parameter
-CCD1 = 0;
-
 % Set Flags
 turbulence = true; %use to set whether or not turbulence is included
 checkperformance = true; %does the convolution with the PSFs to estimate image quality
@@ -86,6 +80,13 @@ F.name = 'Field';
 F.resize(1024); % make it big to study the field before the pupil.
 F.FFTSize = 1024; % Used to compute PSFs, etc.
 F.lambda = lambda;
+
+% PSF Stuff
+THld = lambda/D * 206265; % Lambda/D in arcsecs.
+FOV =   15*THld; % FOV for PSF computation
+PLATE_SCALE = THld/2; % Pixel Size for PSF computations -- set by our first order parameter
+CCD1 = 0;
+
 
 F.planewave*A;
 [x,y] = F.coords;
@@ -175,6 +176,7 @@ if checkperformance == true
     
     figure(4)
     clf;
+    subplot(1,2,1)
     imagesc(img_DL);
     sqar;
     title('Diffraction Limited Case');
