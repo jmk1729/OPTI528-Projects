@@ -1,6 +1,5 @@
 function windSpeed = WindSpeed(month,altitude)
 % Outputs the wind speed for the input month (1-12) and list of altitudes
-%
 %% Initializations
 Tucson = load('Tucson.mat'); % Load table data from Optics Express, Vol. 19, Issue 2, pp. 820-837 (2011) http://dx.doi.org/10.1364/OE.19.000820
 AConst = Tucson.a;
