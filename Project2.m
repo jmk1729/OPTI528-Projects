@@ -82,8 +82,8 @@ end
 
 % Define some beacons from which to calculate ATMO OPLs...
 %% Guide star selection
-CAMERA = [0 0 1] * 10000;
-ATMO.BEACON = CAMERA; % Set this so ATMO knows how to compute the wavefront.
+CAR = [0 0 1] * 10000;
+ATMO.BEACON = CAR; % Set this so ATMO knows how to compute the wavefront.
 
 fprintf('\n Making ATMO....\n');
 ATMO.make;
