@@ -8,7 +8,8 @@ AConst = Tucson.a;
 ACMonth = AConst(month,1:4);
 LowAlt = 2000; % meters
 HighAlt = 7000; % meters
-k = 2*pi/(700e-9); % meters
+lambda = AOField.VBAND;
+k = 2*pi/lambda; % meters
 %% Wind Speed Calculation
 % Start with non-linear least squares data fit, this should be a Gaussian
 A0 = ACMonth(1);
@@ -27,7 +28,7 @@ windSpeed = A0 + A1*exp(-((altitude-A2)/A3).^2); % Equation (3) in the reference
 
 %% Integrate for RMS Wind Speed
 if rmsFlag == true
-    Vsq = @(z)(A0 + A1*exp(-((z-A2)/A3).^2)).^2;
+    Vsq = @(z) (A0 + A1*exp(-((z-A2)/A3).^2)).^2;
     Vrms = sqrt((1/15000)*integral(Vsq,LowAlt,HighAlt)); %Dyson Principles of AO 3rd Ed. equation (2.16)
 else
     Vrms = 'Not Computed';
@@ -39,7 +40,7 @@ if rmsFlag == true
     A = 1.7e-14; % Cn2 at ground level, published value referenced in HVModel ref 2)
     Cn2 = @(h) 0.00594*((Vrms/27).^2).*(((10^-5).*h).^10).*exp(-h./1000) ...
         +(2.7*10^-16)*exp(-h./1500) + A.*exp(-h./100); % HVModel
-    r0 = (0.423*k^2*integral(Cn2,0,HighAlt)).^(-3/5); % Dyson
+    r0 = (0.423*k^2*integral(Cn2,LowAlt,HighAlt)).^(-3/5); % Dyson
 else
     r0 = 'Not Computed';
 end
