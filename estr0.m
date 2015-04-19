@@ -6,8 +6,8 @@ function [windSpeed, Vrms, r0] = estr0(month,altitude,rmsFlag)
 Tucson = load('Tucson.mat'); % Load table data from Optics Express, Vol. 19, Issue 2, pp. 820-837 (2011) http://dx.doi.org/10.1364/OE.19.000820
 AConst = Tucson.a;
 ACMonth = AConst(month,1:4);
-LowAlt = 0; % meters
-HighAlt = 7000; % meters
+LowAlt = 1000; % meters
+HighAlt = 10000; % meters
 lambda = AOField.VBAND;
 k = 2*pi/lambda; % meters
 %% Wind Speed Calculation
