@@ -46,30 +46,44 @@ fprintf('\n');
 
 %% Make a multi-layer atmosphere.
 % Make an AOAtmo with 3 layers all of the same strength.
-altitude = [10,5000,9990];
-thickness = [altitude(1),altitude(2)-altitude(1),altitude(3)-altitude(2)];
-windSpeed = 0.0024 .* altitude; %only valid up to 10 km
-HV_alts = [thickness(1)/2,altitude(2)-thickness(2)/2,altitude(3) - thickness(3)/2];
-Cn2_HV = thickness .* HVModel(windSpeed,HV_alts);
+% altitude = [10,5000,9990];
+% thickness = [altitude(1),altitude(2)-altitude(1),altitude(3)-altitude(2)];
+% windSpeed = 0.0024 .* altitude; %only valid up to 10 km
+% HV_alts = [thickness(1)/2,altitude(2)-thickness(2)/2,altitude(3) - thickness(3)/2];
+% Cn2_HV = thickness .* HVModel(windSpeed,HV_alts);
 % Cn2_SLC = [SLCModel('day',altitude(1)),SLCModel('day',altitude(2)),SLCModel('day',altitude(3))];
 
+% for n=1:3
+%     ps = AOScreen(2*1024);
+%     ps.name = sprintf('Layer %d',n);
+%     ps.spacing(0.02);
+%     ps.setCn2(Cn2_HV(n),thickness(n));
+% %     ps.setR0(r0_mat(n));
+%     ATMO.addLayer(ps,altitude(n));
+%     ATMO.layers{n}.Wind = randn([1 2])*15; % random wind layers.
+% end
+
+%% Use r0 instead
+[windSpeed, Vrms, r0] = estr0(5,1:0.1:10000,true);
+layerr0 = [r0,0.05];
+r0thickness = [9000,1000];
+r0heights = [0,9000];
 ATMO = AOAtmo(A);
 ATMO.name = 'Layered Atmosphere';
 
-for n=1:3
+for n=1:2
     ps = AOScreen(2*1024);
     ps.name = sprintf('Layer %d',n);
     ps.spacing(0.02);
-    ps.setCn2(Cn2_HV(n),thickness(n));
-%     ps.setR0(r0_mat(n));
-    ATMO.addLayer(ps,altitude(n));
+    ps.setR0(layerr0(n),r0thickness(n));
+    ATMO.addLayer(ps,r0heights(n));
     ATMO.layers{n}.Wind = randn([1 2])*15; % random wind layers.
 end
 
 % Define some beacons from which to calculate ATMO OPLs...
 %% Guide star selection
-CAMERA = [0 0 1] * 10000;
-ATMO.BEACON = CAMERA; % Set this so ATMO knows how to compute the wavefront.
+CAR = [0 0 1] * 10000;
+ATMO.BEACON = CAR; % Set this so ATMO knows how to compute the wavefront.
 
 fprintf('\n Making ATMO....\n');
 ATMO.make;
@@ -132,6 +146,7 @@ for t=0:.01:endtime
     imagesc(thx,thy,CCD1);
     title('Long Exposure');
     axis xy
+    daspect([1,1,1]);
     colormap(gray);
     
     

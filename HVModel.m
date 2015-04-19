@@ -7,7 +7,7 @@ function Cn2 = HVModel(rms_wind_speed, altitude)
 % altitude.  For equation to calculate rms wind speed, see reference 1)
 % *************************************************************************
 % Inputs:
-% rms_wind_speed in m/s, can be vector
+% rms_wind_speed in m/s
 % altitude in meters, can be vector
 % *************************************************************************
 % References:
@@ -19,5 +19,5 @@ function Cn2 = HVModel(rms_wind_speed, altitude)
 
 A = 1.7e-14; % Cn2 at ground level, published value referenced in 2)
 
-Cn2 = 0.00594*((rms_wind_speed./27).^2).*(((10^-5).*altitude).^10).*exp(-altitude/1000) ... 
-    +(2.7*10^-16).*exp(-altitude./1500) + A.*exp(-altitude./100);
+Cn2 = 0.00594*((rms_wind_speed/27).^2).*(((10^-5)*altitude).^10).*exp(-altitude/1000) ... 
+    +(2.7*10^-16)*exp(-altitude./1500) + A.*exp(-altitude./100);
