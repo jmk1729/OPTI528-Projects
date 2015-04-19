@@ -65,9 +65,9 @@ fprintf('\n');
 
 %% Use r0 instead
 [windSpeed, Vrms, r0] = estr0(5,1:0.1:10000,true);
-layerr0 = [0.05,r0];
-r0thickness = [1000,9000];
-r0heights = [0,1000];
+layerr0 = [r0,0.05];
+r0thickness = [9000,1000];
+r0heights = [0,9000];
 ATMO = AOAtmo(A);
 ATMO.name = 'Layered Atmosphere';
 
@@ -146,6 +146,7 @@ for t=0:.01:endtime
     imagesc(thx,thy,CCD1);
     title('Long Exposure');
     axis xy
+    daspect([1,1,1]);
     colormap(gray);
     
     

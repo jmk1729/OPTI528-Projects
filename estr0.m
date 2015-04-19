@@ -45,7 +45,8 @@ if rmsFlag == true
     fplot(Cn2,[LowAlt,HighAlt]);
     xlabel('Altitude in meters');
     ylabel('H-V Computed C_n^2');
-
+    title('C_n^2 vs Altitude for Tucson');
+    
     r0 = (0.423*k^2*integral(Cn2,LowAlt,HighAlt)).^(-3/5); % Dyson
 else
     r0 = 'Not Computed';
