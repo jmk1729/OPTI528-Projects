@@ -7,7 +7,7 @@ Tucson = load('Tucson.mat'); % Load table data from Optics Express, Vol. 19, Iss
 AConst = Tucson.a;
 ACMonth = AConst(month,1:4);
 LowAlt = 1000; % meters
-HighAlt = 10000; % meters
+HighAlt = 7000; % meters
 lambda = AOField.VBAND;
 k = 2*pi/lambda; % meters
 %% Wind Speed Calculation
