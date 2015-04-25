@@ -9,6 +9,5 @@
 *.bbl
 *.bak
 *.fits
-*.mat
 *.out
 *.err
