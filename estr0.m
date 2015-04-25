@@ -1,7 +1,7 @@
-function [windSpeed, Vrms, r0, Cn2List] = estr0(month,rmsFlag,zenAngle,altitude)
-% Outputs the wind speed for the input month (1-12) and list of altitudes,
-% option for rms wind speed and r0 estimation. Zenith angle is input in
-% degrees.
+function [Vrms, r0, Cn2List, CorrectionHeight] = estr0(month,layerFlag,zenAngle,altitude)
+% Outputs the rms wind speed for the input month (1-12),
+% option for Cn2 and r0 estimation. Multiple r0 estimations are possible with an input of the proper range starting from the default mean sea level in Tucson.
+% Zenith angle is input in degrees.
 
 %% Initializations
 Tucson = load('Tucson.mat'); % Load table data from Optics Express, Vol. 19, Issue 2, pp. 820-837 (2011) http://dx.doi.org/10.1364/OE.19.000820
@@ -19,7 +19,7 @@ A1 = ACMonth(2);
 A2 = ACMonth(3);
 A3 = ACMonth(4);
 
-windSpeed = A0 + A1*exp(-((altitude-A2)/A3).^2); % Equation (3) in the reference paper, altitude in meters
+% windSpeed = A0 + A1*exp(-((altitude-A2)/A3).^2); % Equation (3) in the reference paper, altitude in meters
 
 % Sanity check
 % figure(1);
@@ -29,39 +29,44 @@ windSpeed = A0 + A1*exp(-((altitude-A2)/A3).^2); % Equation (3) in the reference
 % title('Wind Profile');
 
 %% Integrate for RMS Wind Speed
-if rmsFlag == true
-    KPObsLowAlt = 0; % Where the observed wind speeds were recorded, in this case when we say a height = 0, we mean the elevation of Kitt Peak
-    KPObsHighAlt = Flight - Elevation(2) + Elevation(1); % Where we care about estimating to -- max height of 30 km
-    KPObsDiffAlt = KPObsHighAlt - KPObsLowAlt;
-    Vsq = @(z) (A0 + A1*exp(-((z-A2)/A3).^2)).^2;
-    Vrms = sqrt((1/KPObsDiffAlt)*integral(Vsq,KPObsLowAlt,KPObsHighAlt)); %Tyson Principles of AO 3rd Ed. equation (2.16)
-else
-    Vrms = 'Not Computed';
-end
+KPObsLowAlt = 0; % Where the observed wind speeds were recorded, in this case when we say a height = 0, we mean the elevation of Kitt Peak
+KPObsHighAlt = Flight - Elevation(2) + Elevation(1); % Where we care about estimating to -- max height of 30 km
+KPObsDiffAlt = KPObsHighAlt - KPObsLowAlt;
+Vsq = @(z) (A0 + A1*exp(-((z-A2)/A3).^2)).^2;
+Vrms = sqrt((1/KPObsDiffAlt)*integral(Vsq,KPObsLowAlt,KPObsHighAlt)); %Tyson Principles of AO 3rd Ed. equation (2.16)
 
 %% r0 Calculation
 % Fried coherence length calculated using the rms wind speed parameter.
-
 LowAlt = Elevation(1); % Where we are above mean sea level in meters for UAV observation
 HighAlt = Flight + Elevation(1); % Account for mean sea level offset
-Resolution = 100; % Between layer resolution determined by linspace
-Range = linspace(LowAlt,HighAlt,Resolution);
-if rmsFlag == true
-    A = 1.7e-14; % Cn2 at ground level, published value referenced in HVModel.m ref 2)
-    Cn2 = @(h) (0.00594*((Vrms/27).^2).*(((10^-5).*h).^10).*exp(-h./1000) ...
-        +(2.7*10^-16)*exp(-h./1500) + A.*exp(-h./100)).*(h/HighAlt).^(5/3); % HVModel with Spherical wave factor
-    
-%     Cn2List = Cn2(Range).*(HighAlt./Range).^(5/3); % Look at geom compensated Cn2 values
+
+% HV Model Initialization
+A = 1.7e-14; % Cn2 at ground level, published value referenced in HVModel.m ref 2)
+Cn2 = @(h) (0.00594*((Vrms/27).^2).*(((10^-5).*h).^10).*exp(-h./1000) ...
+    +(2.7*10^-16)*exp(-h./1500) + A.*exp(-h./100)).*(h/HighAlt).^(5/3); % HVModel with Spherical wave factor
+if layerFlag == true
+    Resolution = 100; % Between layer resolution determined by linspace
+    Range = linspace(LowAlt,HighAlt,Resolution);
+    %     Cn2List = Cn2(Range).*(HighAlt./Range).^(5/3); % Look at geom compensated Cn2 values
     Cn2List = Cn2(Range); % Look at uncompensated values for a measure of the worst structure constant.  This helps us determine our correction conjugate.
-    
+    % Determine the height over which an individual Cn2 contributes the
+    % most turbulence
+%     mostTurb = max(Cn2List);
+%     CorrectionLayer = (Cn2List == mostTurb);
+%     CorrectionHeight = Range(CorrectionLayer);
     %     figure(2)
     %     fplot(Cn2,[LowAlt,HighAlt]);
     %     xlabel('Altitude in meters');
     %     ylabel('H-V Computed C_n^2');
     %     title('C_n^2 vs Altitude for Tucson');
-    
-    r0 = (0.423*k^2*secd(zenAngle)*integral(Cn2,LowAlt,HighAlt)).^(-3/5); % Tyson
-else
-    r0 = 'Not Computed';
+    TotalLayers = length(altitude);
+    if TotalLayers > 0
+        r0 = zeros(1,TotalLayers);
+        for NumLayer = 1:TotalLayers
+            r0(NumLayer) = (0.423*k^2*secd(zenAngle)*integral(Cn2,LowAlt,altitude(NumLayer))).^(-3/5); % Tyson
+        end
+    else
+        r0 = (0.423*k^2*secd(zenAngle)*integral(Cn2,LowAlt,HighAlt)).^(-3/5); % Tyson
+    end
 end
 end
