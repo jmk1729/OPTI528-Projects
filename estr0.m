@@ -1,15 +1,17 @@
-function [windSpeed, Vrms, r0] = estr0(month,altitude,rmsFlag)
+function [windSpeed, Vrms, r0, Cn2List] = estr0(month,rmsFlag,zenAngle,altitude)
 % Outputs the wind speed for the input month (1-12) and list of altitudes,
-% option for rms wind speed and r0 estimation
+% option for rms wind speed and r0 estimation. Zenith angle is input in
+% degrees.
 
 %% Initializations
 Tucson = load('Tucson.mat'); % Load table data from Optics Express, Vol. 19, Issue 2, pp. 820-837 (2011) http://dx.doi.org/10.1364/OE.19.000820
 AConst = Tucson.a;
+Elevation = [806,2096]; % Google search for (1) Tucson and (2) Kitt Peak observatory elevations in meters
+Flight = 10000; % meters above ground for UAV.  This is an absolute path (not relative to mean sea level!!!)
 ACMonth = AConst(month,1:4);
-LowAlt = 1000; % meters
-HighAlt = 10000; % meters
 lambda = AOField.VBAND;
 k = 2*pi/lambda; % meters
+
 %% Wind Speed Calculation
 % Start with non-linear least squares data fit, this should be a Gaussian
 A0 = ACMonth(1);
@@ -28,26 +30,37 @@ windSpeed = A0 + A1*exp(-((altitude-A2)/A3).^2); % Equation (3) in the reference
 
 %% Integrate for RMS Wind Speed
 if rmsFlag == true
+    KPObsLowAlt = 0; % Where the observed wind speeds were recorded, in this case when we say a height = 0, we mean the elevation of Kitt Peak
+    KPObsHighAlt = Flight - Elevation(2) + Elevation(1); % Where we care about estimating to -- max height of 30 km
+    KPObsDiffAlt = KPObsHighAlt - KPObsLowAlt;
     Vsq = @(z) (A0 + A1*exp(-((z-A2)/A3).^2)).^2;
-    Vrms = sqrt((1/15000)*integral(Vsq,LowAlt,HighAlt)); %Dyson Principles of AO 3rd Ed. equation (2.16)
+    Vrms = sqrt((1/KPObsDiffAlt)*integral(Vsq,KPObsLowAlt,KPObsHighAlt)); %Tyson Principles of AO 3rd Ed. equation (2.16)
 else
     Vrms = 'Not Computed';
 end
 
 %% r0 Calculation
 % Fried coherence length calculated using the rms wind speed parameter.
+
+LowAlt = Elevation(1); % Where we are above mean sea level in meters for UAV observation
+HighAlt = Flight + Elevation(1); % Account for mean sea level offset
+Resolution = 100; % Between layer resolution determined by linspace
+Range = linspace(LowAlt,HighAlt,Resolution);
 if rmsFlag == true
-    A = 1.7e-14; % Cn2 at ground level, published value referenced in HVModel ref 2)
-    Cn2 = @(h) 0.00594*((Vrms/27).^2).*(((10^-5).*h).^10).*exp(-h./1000) ...
-        +(2.7*10^-16)*exp(-h./1500) + A.*exp(-h./100); % HVModel
+    A = 1.7e-14; % Cn2 at ground level, published value referenced in HVModel.m ref 2)
+    Cn2 = @(h) (0.00594*((Vrms/27).^2).*(((10^-5).*h).^10).*exp(-h./1000) ...
+        +(2.7*10^-16)*exp(-h./1500) + A.*exp(-h./100)).*(h/HighAlt).^(5/3); % HVModel with Spherical wave factor
     
-    figure(2)
-    fplot(Cn2,[LowAlt,HighAlt]);
-    xlabel('Altitude in meters');
-    ylabel('H-V Computed C_n^2');
-    title('C_n^2 vs Altitude for Tucson');
+%     Cn2List = Cn2(Range).*(HighAlt./Range).^(5/3); % Look at geom compensated Cn2 values
+    Cn2List = Cn2(Range); % Look at uncompensated values for a measure of the worst structure constant.  This helps us determine our correction conjugate.
     
-    r0 = (0.423*k^2*integral(Cn2,LowAlt,HighAlt)).^(-3/5); % Dyson
+    %     figure(2)
+    %     fplot(Cn2,[LowAlt,HighAlt]);
+    %     xlabel('Altitude in meters');
+    %     ylabel('H-V Computed C_n^2');
+    %     title('C_n^2 vs Altitude for Tucson');
+    
+    r0 = (0.423*k^2*secd(zenAngle)*integral(Cn2,LowAlt,HighAlt)).^(-3/5); % Tyson
 else
     r0 = 'Not Computed';
 end
