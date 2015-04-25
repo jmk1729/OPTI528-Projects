@@ -12,9 +12,9 @@ k = (2*pi)/lambda;
 endtime = 0.5;
 
 % Pupil Choices
-D = 0.5592; %meters
+D = 1.12; %meters
 secondary = 0.3 * D;
-spider = 0.0254/2;
+spider = 0.0254;
 
 % Set Flags
 turbulence = true; %use to set whether or not turbulence is included
@@ -23,7 +23,7 @@ checkperformance = true; %does the convolution with the PSFs to estimate image q
 N1=2; N2=2;
 
 %% Make Our Telescope Pupil
-SPACING = 0.001;           % 1 mm spacing (could probably be more)
+SPACING = 0.005;           % 1 mm spacing (could probably be more)
 aa = SPACING;              % for antialiasing.
 PUPIL_DEFN = [
    0 0 D         1 aa 0 0 0 0 0
@@ -64,20 +64,20 @@ fprintf('\n');
 % end
 
 %% Use r0 instead
-[windSpeed, Vrms, r0] = estr0(5,1:0.1:10000,true);
+[windSpeed, Vrms, r0] = estr0(5,true,0,[8710,2500,0]);
 layerr0 = [r0,0.05];
 r0thickness = [9000,1000];
 r0heights = [0,9000];
 ATMO = AOAtmo(A);
 ATMO.name = 'Layered Atmosphere';
 
-for n=1:2
-    ps = AOScreen(2*1024);
+for n=1:length(layerr0);
+    ps = AOScreen(2^13);
     ps.name = sprintf('Layer %d',n);
     ps.spacing(0.02);
     ps.setR0(layerr0(n),r0thickness(n));
     ATMO.addLayer(ps,r0heights(n));
-    ATMO.layers{n}.Wind = randn([1 2])*15; % random wind layers.
+    ATMO.layers{n}.Wind = [0,1]*(85-windSpeed(n)); % random wind layers.
 end
 
 % Define some beacons from which to calculate ATMO OPLs...
