@@ -18,8 +18,10 @@ spider = 0.0254;
 
 % Set Flags
 turbulence = true; %use to set whether or not turbulence is included
-checkperformance = true; %does the convolution with the PSFs to estimate image quality
+AO = true;
+checkperformance = false; %does the convolution with the PSFs to estimate image quality
 
+correction_layer = 3;
 N1=2; N2=2;
 
 %% Make Our Telescope Pupil
@@ -64,29 +66,41 @@ fprintf('\n');
 % end
 
 %% Use r0 instead
-[windSpeed, Vrms, r0] = estr0(5,true,0,[8710,2500,0]);
-layerr0 = [r0,0.05];
-r0thickness = [9000,1000];
-r0heights = [0,9000];
+r0heights  = [7050,3800,1290];
+[Vrms, r0, Cn2List,windSpeed] = estr0(1,true,45,r0heights);
+flightwind = (85 * (r0heights/7070));
+layerwinddir = round(2*rand(1,2)-1);
+
 ATMO = AOAtmo(A);
 ATMO.name = 'Layered Atmosphere';
 
-for n=1:length(layerr0);
-    ps = AOScreen(2^13);
+for n=1:length(r0);
+    ps = AOScreen(2^12);
     ps.name = sprintf('Layer %d',n);
     ps.spacing(0.02);
-    ps.setR0(layerr0(n),r0thickness(n));
+    ps.setR0(r0(n));
     ATMO.addLayer(ps,r0heights(n));
-    ATMO.layers{n}.Wind = [0,1]*(85-windSpeed(n)); % random wind layers.
+    Wind = [0,1]*flightwind(n) + layerwinddir * windSpeed(n);
+    ATMO.layers{n}.Wind = Wind;
 end
+fprintf('The total r0 is %0.4f cm\n',ATMO.totalFriedScale * 10^2); 
+
+
 
 % Define some beacons from which to calculate ATMO OPLs...
 %% Guide star selection
-CAR = [0 0 1] * 10000;
+CAR = [0 0 1] * 9000;
 ATMO.BEACON = CAR; % Set this so ATMO knows how to compute the wavefront.
 
 fprintf('\n Making ATMO....\n');
 ATMO.make;
+
+%% Get the Corrector Screen
+if AO == true
+    fprintf('Perfect AO Turned On\n')
+    correction = ATMO.layers{correction_layer}.screen.copy;
+    correction.grid(-correction.grid);
+end
 
 %% Make an AOField object.
 F = AOField(A);
@@ -98,7 +112,7 @@ F.lambda = lambda;
 % PSF Stuff
 THld = lambda/D * 206265; % Lambda/D in arcsecs.
 FOV =   15*THld; % FOV for PSF computation
-PLATE_SCALE = THld/2; % Pixel Size for PSF computations -- set by our first order parameter
+PLATE_SCALE = THld/3; % Pixel Size for PSF computations -- set by our first order parameter
 CCD1 = 0;
 
 
@@ -118,7 +132,11 @@ counter = 1;
 for t=0:.01:endtime
     ATMO.setObsTime(t);
     if turbulence == true
-        F.planewave*ATMO*A;
+        if AO == false
+            F.planewave*ATMO*A;
+        elseif AO == true
+            F.planewave*ATMO*A*correction;
+        end
     else
         F.planewave*A;
     end
