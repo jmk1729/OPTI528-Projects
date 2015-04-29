@@ -9,7 +9,7 @@ clear all; clc; close all;
 %% Preliminary Important Stuff
 lambda = AOField.VBAND; % Red light.
 k = (2*pi)/lambda;
-endtime = 0.5;
+endtime = 1e-3;
 
 % Pupil Choices
 D = 1.12; %meters
@@ -18,7 +18,7 @@ spider = 0.0254;
 
 % Set Flags
 turbulence = true; %use to set whether or not turbulence is included
-AO = true;
+AO = false;
 checkperformance = false; %does the convolution with the PSFs to estimate image quality
 
 correction_layer = 3;
@@ -65,10 +65,11 @@ fprintf('\n');
 %     ATMO.layers{n}.Wind = randn([1 2])*15; % random wind layers.
 % end
 
+
 %% Use r0 instead
 r0heights  = [7050,3800,1290];
 [Vrms, r0, Cn2List,windSpeed] = estr0(1,true,45,r0heights);
-flightwind = (85 * (r0heights/7070));
+flightwind = (35 * (r0heights/7070));
 layerwinddir = round(2*rand(1,2)-1);
 
 ATMO = AOAtmo(A);
@@ -83,9 +84,12 @@ for n=1:length(r0);
     Wind = [0,1]*flightwind(n) + layerwinddir * windSpeed(n);
     ATMO.layers{n}.Wind = Wind;
 end
+fprintf('*********************************************\n');
 fprintf('The total r0 is %0.4f cm\n',ATMO.totalFriedScale * 10^2); 
-
-
+fprintf('The Isoplanatic Angle is %0.4f arcseconds\n',(ATMO.totalFriedScale / 10000)*206265);
+fprintf('The Coherence Time is %0.4f ms\n',0.314*(ATMO.totalFriedScale/sqrt(ATMO.layers{1}.Wind(1)^2 + ATMO.layers{1}.Wind(2)^2))*10^3);
+fprintf('The required AO servo rate is at least %0.4f Hz\n',(0.314*(ATMO.totalFriedScale/sqrt(ATMO.layers{1}.Wind(1)^2 + ATMO.layers{1}.Wind(2)^2)))^-1)
+fprintf('*********************************************\n');
 
 % Define some beacons from which to calculate ATMO OPLs...
 %% Guide star selection
@@ -95,12 +99,6 @@ ATMO.BEACON = CAR; % Set this so ATMO knows how to compute the wavefront.
 fprintf('\n Making ATMO....\n');
 ATMO.make;
 
-%% Get the Corrector Screen
-if AO == true
-    fprintf('Perfect AO Turned On\n')
-    correction = ATMO.layers{correction_layer}.screen.copy;
-    correction.grid(-correction.grid);
-end
 
 %% Make an AOField object.
 F = AOField(A);
@@ -112,7 +110,8 @@ F.lambda = lambda;
 % PSF Stuff
 THld = lambda/D * 206265; % Lambda/D in arcsecs.
 FOV =   15*THld; % FOV for PSF computation
-PLATE_SCALE = THld/3; % Pixel Size for PSF computations -- set by our first order parameter
+% PLATE_SCALE = THld/3; % Pixel Size for PSF computations -- set by our first order parameter
+PLATE_SCALE = 0.0187;
 CCD1 = 0;
 
 
@@ -129,23 +128,29 @@ input 'Press a key to Continue'
 h = figure(1);
 ATMO.useGeometry(false);
 counter = 1;
-for t=0:.01:endtime
+for t=0:1e-5:endtime
     ATMO.setObsTime(t);
     if turbulence == true
         if AO == false
             F.planewave*ATMO*A;
         elseif AO == true
+            correction = AOScreen(1);
+            correction.spacing(SPACING);
+            OPL = -ATMO.grid;
+            correction.grid((0.5*rand(1,1)+0.5)*OPL);
             F.planewave*ATMO*A*correction;
         end
     else
         F.planewave*A;
     end
     subplot(N1,N2,1);
+% subplot(1,2,1)
     ATMO.show;
-    title(sprintf('wavefront:time=%.3fs',t));
+    title(sprintf('wavefront:time=%.3f ms',t*10^3));
     colorbar off;
     
     subplot(N1,N2,2);
+% subplot(1,2,2)
     F.show;
     colorbar off;
     title('Field');
@@ -153,6 +158,7 @@ for t=0:.01:endtime
     
     subplot(N1,N2,3);
     [PSF,thx,thy] = F.mkPSF(FOV,PLATE_SCALE);
+    PSF_turbmax = max(PSF(:));
     imagesc(thx,thy,log10(PSF/PSFmax),[-4 0]);
     daspect([1 1 1]);
     axis xy;
@@ -169,11 +175,11 @@ for t=0:.01:endtime
     
     
     drawnow;
-%     M1(counter) =getframe(h);
+    M1(counter) =getframe(h);
     counter = counter + 1;
 end
 
-
+fprintf('The Strehl Ratio is about %0.4f\n',max(CCD1(:))/PSFmax);
 
 %% Check Performance
 if checkperformance == true
